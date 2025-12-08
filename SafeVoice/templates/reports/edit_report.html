@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Report - GBV System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="main-container">
+            <div class="header-section">
+                <h2><i class="bi bi-pencil-square me-2"></i>Edit Report</h2>
+                <p class="text-muted">Update report status and details</p>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5>Report Information</h5>
+                    <p><strong>Name:</strong> {{ report.name }}</p>
+                    <p><strong>Contact:</strong> {{ report.contact }}</p>
+                    <p><strong>Violence Type:</strong> {{ report.get_violence_type_display }}</p>
+                    <p><strong>Location:</strong> {{ report.location }}</p>
+                    <p><strong>Description:</strong> {{ report.description }}</p>
+                    <p><strong>Submitted:</strong> {{ report.submitted_at|date:"F d, Y h:i A" }}</p>
+                    {% if report.evidence_file %}
+                    <p><strong>Evidence:</strong> <a href="{{ report.evidence_file.url }}" target="_blank">View File</a></p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label for="status" class="form-label">Update Status</label>
+                    <select name="status" id="status" class="form-select" required>
+                        <option value="pending" {% if report.status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="in_progress" {% if report.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                        <option value="handled" {% if report.status == 'handled' %}selected{% endif %}>Handled</option>
+                    </select>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-2"></i>Save Changes
+                    </button>
+                    <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
