@@ -9,4 +9,5 @@ urlpatterns = [
     path('admin-logout/', views.admin_logout, name='admin_logout'),
     path('edit-report/<int:pk>/', views.edit_report, name='edit_report'),
     path('delete-report/<int:pk>/', views.delete_report, name='delete_report'),
+    path('api/chatbot/', views.chatbot_api, name='chatbot_api'), 
 ]

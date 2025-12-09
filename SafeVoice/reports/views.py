@@ -4,6 +4,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from .forms import ViolenceReportForm
 from .models import ViolenceReport
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 # Create your views here.
 def report_violence(request):
@@ -110,3 +113,33 @@ def admin_logout(request):
     logout(request)
     messages.success(request, 'You have been logged out successfully.')
     return redirect('admin_login')
+
+@csrf_exempt
+def chatbot_api(request):
+    """
+    API endpoint for the AI chatbot
+    Note: In production, you should add proper CSRF protection
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            user_message = data.get('message', '')
+            
+            # The chatbot will be handled on the frontend using Claude API
+            # This endpoint can be used for logging or additional backend processing
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Message received'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=500)
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Only POST requests allowed'
+    }, status=405)
