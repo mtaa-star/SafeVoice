@@ -22,8 +22,8 @@ class ViolenceReportForm(forms.ModelForm):
                 'rows': 5,
                 'placeholder': 'Describe the incident in detail'
             }),
-            'location': forms.TextInput(attrs={
-                'class': 'form-control',
+            'location': forms.Select(attrs={
+                'class': 'form-select',
                 'placeholder': 'Where did this occur?'
             }),
             'evidence_file': forms.FileInput(attrs={
@@ -35,6 +35,6 @@ class ViolenceReportForm(forms.ModelForm):
             'contact': 'Contact Information',
             'violence_type': 'Type of Violence',
             'description': 'Description of Incident',
-            'location': 'Location of Incident',
+            'location': 'County/Location',
             'evidence_file': 'Evidence File (Optional)'
         }

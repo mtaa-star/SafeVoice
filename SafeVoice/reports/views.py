@@ -6,9 +6,33 @@ from .forms import ViolenceReportForm
 from .models import ViolenceReport
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from .models import ViolenceReport, AdminLog  # Add AdminLog
 import json
 
 # Create your views here.
+# Add this new view
+# Helper function to log admin activities
+def log_admin_activity(user, action, description, report_id=None, request=None):
+    """Log administrator activities for audit trail"""
+    ip_address = None
+    if request:
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip_address = x_forwarded_for.split(',')[0]
+        else:
+            ip_address = request.META.get('REMOTE_ADDR')
+        
+    AdminLog.objects.create(
+        admin_user=user,
+        action=action,
+        description=description,
+        report_id=report_id,
+        ip_address=ip_address
+    )
+def landing_page(request):
+    """Display the landing page with GBV information"""
+    return render(request, 'landing.html')
+
 def report_violence(request):
     if request.method == 'POST':
         form = ViolenceReportForm(request.POST, request.FILES)
@@ -113,6 +137,44 @@ def admin_logout(request):
     logout(request)
     messages.success(request, 'You have been logged out successfully.')
     return redirect('admin_login')
+
+@login_required(login_url='admin_login')
+def admin_logs(request):
+    """View to display admin activity logs"""
+    if not request.user.is_staff:
+        return redirect('admin_login')
+    
+    logs = AdminLog.objects.all()
+    
+    # Filter by admin user if provided
+    user_filter = request.GET.get('user')
+    if user_filter:
+        logs = logs.filter(admin_user__username=user_filter)
+    
+    # Filter by action if provided
+    action_filter = request.GET.get('action')
+    if action_filter:
+        logs = logs.filter(action=action_filter)
+    
+    # Filter by date range
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    if date_from:
+        logs = logs.filter(timestamp__gte=date_from)
+    if date_to:
+        logs = logs.filter(timestamp__lte=date_to)
+    
+    # Get list of all admin users for filter dropdown
+    from django.contrib.auth.models import User
+    admin_users = User.objects.filter(is_staff=True)
+    
+    context = {
+        'logs': logs,
+        'admin_users': admin_users,
+        'total_logs': AdminLog.objects.count(),
+    }
+    
+    return render(request, 'reports/admin_logs.html', context)
 
 @csrf_exempt
 def chatbot_api(request):

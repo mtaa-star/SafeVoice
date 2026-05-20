@@ -70,8 +70,9 @@
                         <i class="bi bi-geo-alt-fill text-primary"></i> {{ form.location.label }}
                     </label>
                     {{ form.location }}
+                    <div class="form-text">Select the county where the incident occurred</div>
                     {% if form.location.errors %}
-                        <div class="text-danger small mt-1">{{ form.location.errors }}</div>
+                         <div class="text-danger small mt-1">{{ form.location.errors }}</div>
                     {% endif %}
                 </div>
 
