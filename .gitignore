@@ -1,0 +1,30 @@
+# Python
+*.py[cod]
+*$py.class
+__pycache__/
+.pytest_cache/
+
+# Django
+SafeVoice/db.sqlite3
+*.log
+*.pot
+
+# Virtual environments
+myenv/
+venv/
+ENV/
+.env/
+.venv/
+
+# VS Code
+.vscode/
+
+# Environment / local config
+*.env
+local_settings.py
+
+# Packaging
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
