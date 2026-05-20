@@ -26,7 +26,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-m-2=9e_1f&u4pco+j9o*!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', ['safevoice-qfjv.onrender.com', 'localhost', '127.0.0.1']).split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'safevoice-qfjv.onrender.com,localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -75,16 +75,31 @@ WSGI_APPLICATION = 'SafeVoice.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'railway',
-        'USER': 'postgres',
-        'PASSWORD': 'xwgbDyZuGZpvbYIDuwiJaGJStzqKZHfa',
-        'HOST': 'autorack.proxy.rlwy.net',
-        'PORT': '29471',
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    from urllib.parse import urlparse
+    parsed_url = urlparse(DATABASE_URL)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': parsed_url.path.lstrip('/'),
+            'USER': parsed_url.username,
+            'PASSWORD': parsed_url.password,
+            'HOST': parsed_url.hostname,
+            'PORT': parsed_url.port or '',
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('POSTGRES_DB', 'safevoice'),
+            'USER': os.environ.get('POSTGRES_USER', 'postgres'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres123'),
+            'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        }
+    }
 
 
 # Password validation

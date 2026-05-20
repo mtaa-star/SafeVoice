@@ -38,3 +38,28 @@ class ViolenceReportForm(forms.ModelForm):
             'location': 'County/Location',
             'evidence_file': 'Evidence File (Optional)'
         }
+
+class FollowUpForm(forms.Form):
+    report_id = forms.IntegerField(
+        label='Report ID',
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter your report ID'
+        })
+    )
+    contact = forms.CharField(
+        max_length=100,
+        label='Contact Information',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Phone number or email used in the original report'
+        })
+    )
+    message = forms.CharField(
+        label='Follow-up Message',
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 5,
+            'placeholder': 'Tell us more about your case or provide an update'
+        })
+    )

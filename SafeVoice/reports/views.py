@@ -4,11 +4,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.core.mail import send_mail
 from django.conf import settings
-from .forms import ViolenceReportForm
-from .models import ViolenceReport
+from .forms import ViolenceReportForm, FollowUpForm
+from .models import ViolenceReport, AdminLog, FollowUp
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .models import ViolenceReport, AdminLog  # Add AdminLog
 import json
 
 
@@ -47,6 +46,35 @@ def notify_admin(report):
     if not email_sent:
         print('Admin notification email was not sent. Check ADMIN_NOTIFICATION_EMAIL setting.')
     return email_sent
+
+
+def send_admin_followup_email(followup):
+    admin_email = getattr(settings, 'ADMIN_NOTIFICATION_EMAIL', '')
+    if not admin_email:
+        return False
+
+    subject = f"Follow-up Submitted for Report #{followup.report.id}"
+    message = (
+        f"A follow-up has been submitted for report #{followup.report.id}.\n\n"
+        f"Report Name: {followup.report.name}\n"
+        f"Contact Provided: {followup.contact}\n"
+        f"Follow-up Message:\n{followup.message}\n\n"
+        f"Original Report Submitted At: {followup.report.submitted_at.strftime('%Y-%m-%d %H:%M:%S')}\n"
+    )
+
+    try:
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [admin_email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        print(f"Follow-up email notification failed: {e}")
+        return False
+
 
 # Create your views here.
 # Add this new view
@@ -92,6 +120,36 @@ def report_violence(request):
 def report_success(request):
     return render(request, 'reports/success.html')
 
+def follow_up_request(request):
+    if request.method == 'POST':
+        form = FollowUpForm(request.POST)
+        if form.is_valid():
+            report_id = form.cleaned_data['report_id']
+            contact = form.cleaned_data['contact'].strip()
+            message = form.cleaned_data['message']
+            report = ViolenceReport.objects.filter(id=report_id, contact=contact).first()
+
+            if not report:
+                messages.error(request, 'No matching report found for that Report ID and contact. Please check your details.')
+            else:
+                followup = FollowUp.objects.create(
+                    report=report,
+                    contact=contact,
+                    message=message,
+                )
+                send_admin_followup_email(followup)
+                messages.success(request, 'Your follow-up has been submitted. Our team will review it and respond if needed.')
+                return redirect('follow_up_success')
+    else:
+        form = FollowUpForm()
+
+    return render(request, 'reports/follow_up.html', {'form': form})
+
+
+def follow_up_success(request):
+    return render(request, 'reports/follow_up_success.html')
+
+
 def admin_login(request):
     if request.user.is_authenticated and request.user.is_staff:
     #if request.user.is_authenticated:
@@ -131,6 +189,8 @@ def admin_dashboard(request):
         return redirect('admin_login')
     
     reports = ViolenceReport.objects.all()
+    followup_count = FollowUp.objects.count()
+    recent_followups = FollowUp.objects.select_related('report').all()[:5]
     #Log dashboard access
     log_admin_activity(
         user=request.user,
@@ -155,6 +215,8 @@ def admin_dashboard(request):
         'pending_count': ViolenceReport.objects.filter(status='pending').count(),
         'in_progress_count': ViolenceReport.objects.filter(status='in_progress').count(),
         'handled_count': ViolenceReport.objects.filter(status='handled').count(),
+        'followup_count': followup_count,
+        'recent_followups': recent_followups,
     }
     
     return render(request, 'reports/admin_dashboard.html', context)

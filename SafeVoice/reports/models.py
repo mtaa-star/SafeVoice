@@ -85,6 +85,20 @@ class ViolenceReport(models.Model):
         verbose_name = 'Violence Report'
         verbose_name_plural = 'Violence Reports'
 
+class FollowUp(models.Model):
+    report = models.ForeignKey(ViolenceReport, on_delete=models.CASCADE, related_name='follow_ups')
+    contact = models.CharField(max_length=100)
+    message = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Report Follow Up'
+        verbose_name_plural = 'Report Follow Ups'
+
+    def __str__(self):
+        return f"Follow-up for report {self.report.id} by {self.contact} at {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+
 class AdminLog(models.Model):
     ACTION_CHOICES = [
         ('login', 'Logged In'),
