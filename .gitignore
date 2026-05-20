@@ -6,6 +6,7 @@ __pycache__/
 
 # Django
 SafeVoice/db.sqlite3
+SafeVoice/staticfiles/
 *.log
 *.pot
 
