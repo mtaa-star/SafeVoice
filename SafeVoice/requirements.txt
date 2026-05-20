@@ -1,0 +1,7 @@
+asgiref==3.11.0
+Django==6.0
+sqlparse==0.5.4
+tzdata==2025.2
+psycopg[binary]
+gunicorn
+whitenoise==6.12.0
