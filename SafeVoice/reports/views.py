@@ -10,9 +10,6 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import ViolenceReport, AdminLog  # Add AdminLog
 import json
-import urllib.request
-import urllib.parse
-import base64
 
 
 def send_admin_email(report):
@@ -81,10 +78,9 @@ def send_admin_sms(report):
 
 def notify_admin(report):
     email_sent = send_admin_email(report)
-    sms_sent = send_admin_sms(report)
-    if not (email_sent or sms_sent):
-        print('Admin notification was not sent. Check ADMIN_NOTIFICATION_EMAIL or ADMIN_NOTIFICATION_PHONE settings.')
-    return email_sent, sms_sent
+    if not email_sent:
+        print('Admin notification email was not sent. Check ADMIN_NOTIFICATION_EMAIL setting.')
+    return email_sent
 
 # Create your views here.
 # Add this new view
