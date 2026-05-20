@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-m-2=9e_1f&u4pco+j9o*!w49s*45en@b-^_65=zn$y@cybkb81'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-m-2=9e_1f&u4pco+j9o*!w49s*45en@b-^_65=zn$y@cybkb81')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -121,7 +122,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
-import os
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -129,16 +129,20 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Email notifications
-EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'ogalsteve00@gmail.com')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'shzdcgabrjajqckj')
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'ogalsteve00@gmail.com')
 # Admin notification email (set to your address)
 ADMIN_NOTIFICATION_EMAIL = 'ogalsteve00@gmail.com'
 # For Gmail with 2FA, use an application-specific password in EMAIL_HOST_PASSWORD
+
+if DEBUG and not EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 
 # SMS notifications removed (no Twilio account)
 
