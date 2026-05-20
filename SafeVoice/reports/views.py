@@ -2,12 +2,89 @@ from django.shortcuts import render,redirect,get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
+from django.core.mail import send_mail
+from django.conf import settings
 from .forms import ViolenceReportForm
 from .models import ViolenceReport
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import ViolenceReport, AdminLog  # Add AdminLog
 import json
+import urllib.request
+import urllib.parse
+import base64
+
+
+def send_admin_email(report):
+    admin_email = getattr(settings, 'ADMIN_NOTIFICATION_EMAIL', '')
+    if not admin_email:
+        return False
+
+    subject = f"New GBV Report Submitted: {report.get_violence_type_display()}"
+    message = (
+        f"A new report has been submitted.\n\n"
+        f"Name: {report.name}\n"
+        f"Contact: {report.contact}\n"
+        f"Type: {report.get_violence_type_display()}\n"
+        f"Location: {report.get_location_display()}\n"
+        f"Submitted At: {report.submitted_at.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        f"Details:\n{report.description}\n"
+    )
+
+    try:
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [admin_email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        print(f"Admin email notification failed: {e}")
+        return False
+
+
+def send_admin_sms(report):
+    account_sid = getattr(settings, 'TWILIO_ACCOUNT_SID', '')
+    auth_token = getattr(settings, 'TWILIO_AUTH_TOKEN', '')
+    from_number = getattr(settings, 'TWILIO_FROM_NUMBER', '')
+    to_number = getattr(settings, 'ADMIN_NOTIFICATION_PHONE', '')
+    if not all([account_sid, auth_token, from_number, to_number]):
+        return False
+
+    body = (
+        f"New GBV report from {report.name}: {report.get_violence_type_display()} in "
+        f"{report.get_location_display()}. Contact {report.contact}. Submitted at "
+        f"{report.submitted_at.strftime('%Y-%m-%d %H:%M')}."
+    )
+
+    try:
+        data = urllib.parse.urlencode({
+            'From': from_number,
+            'To': to_number,
+            'Body': body,
+        }).encode()
+        auth_str = f"{account_sid}:{auth_token}"
+        auth_header = base64.b64encode(auth_str.encode()).decode()
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
+        req = urllib.request.Request(url, data=data, method='POST')
+        req.add_header('Authorization', f'Basic {auth_header}')
+        req.add_header('Content-Type', 'application/x-www-form-urlencoded')
+
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return resp.status in (200, 201)
+    except Exception as e:
+        print(f"Admin SMS notification failed: {e}")
+        return False
+
+
+def notify_admin(report):
+    email_sent = send_admin_email(report)
+    sms_sent = send_admin_sms(report)
+    if not (email_sent or sms_sent):
+        print('Admin notification was not sent. Check ADMIN_NOTIFICATION_EMAIL or ADMIN_NOTIFICATION_PHONE settings.')
+    return email_sent, sms_sent
 
 # Create your views here.
 # Add this new view
@@ -21,14 +98,18 @@ def log_admin_activity(user, action, description, report_id=None, request=None):
             ip_address = x_forwarded_for.split(',')[0]
         else:
             ip_address = request.META.get('REMOTE_ADDR')
-        
-    AdminLog.objects.create(
-        admin_user=user,
-        action=action,
-        description=description,
-        report_id=report_id,
-        ip_address=ip_address
-    )
+    try:    
+        AdminLog.objects.create(
+           admin_user=user,
+           action=action,
+           description=description,
+           report_id=report_id,
+           ip_address=ip_address
+        )
+        print(f"Log created: {user} - {action}") #debug print statement
+    except Exception as e:
+        print(f"Error occurred while logging admin activity: {e}") #debug print statement
+
 def landing_page(request):
     """Display the landing page with GBV information"""
     return render(request, 'landing.html')
@@ -37,7 +118,8 @@ def report_violence(request):
     if request.method == 'POST':
         form = ViolenceReportForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
+            report = form.save()
+            notify_admin(report)
             messages.success(request, 'Your report has been submitted successfully. Thank you for your courage.')
             return redirect('report_success')
     else:
@@ -61,6 +143,13 @@ def admin_login(request):
         if user is not None and user.is_staff:
             if user.is_staff:
                 login(request, user)
+                # Log the admin login activity
+                log_admin_activity(
+                    user=user,
+                    action='login',
+                    description=f'Admin {user.username} logged into the system successfully.',
+                    request=request
+                )
                 messages.success(request, f'Welcome back, {user.username}!')
                 return redirect('admin_dashboard')
             else:
@@ -80,6 +169,13 @@ def admin_dashboard(request):
         return redirect('admin_login')
     
     reports = ViolenceReport.objects.all()
+    #Log dashboard access
+    log_admin_activity(
+        user=request.user,
+        action='view_report',
+        description=f'Admin {request.user.username} accessed the dashboard.',
+        request=request
+    )
     
     # Filter by status if provided
     status_filter = request.GET.get('status')
@@ -113,6 +209,12 @@ def edit_report(request, pk):
         if status in ['pending', 'in_progress', 'handled']:
             report.status = status
             report.save()
+            log_admin_activity(
+                user=request.user,
+                action='edit_report',
+                description=f'Admin {request.user.username} updated report {report.id}.',
+                request=request
+            )
             messages.success(request, 'Report updated successfully.')
         return redirect('admin_dashboard')
     
@@ -127,6 +229,12 @@ def delete_report(request, pk):
     
     if request.method == 'POST':
         report.delete()
+        log_admin_activity(
+            user=request.user,
+            action='delete_report',
+            description=f'Admin {request.user.username} deleted report {report.id}.',
+            request=request
+        )
         messages.success(request, 'Report deleted successfully.')
         return redirect('admin_dashboard')
     
@@ -134,6 +242,13 @@ def delete_report(request, pk):
 
 @login_required
 def admin_logout(request):
+    # Log the admin logout activity before logging out
+    log_admin_activity(
+        user=request.user,
+        action='logout',
+        description=f'Admin {request.user.username} logged out of the system.',
+        request=request
+    )
     logout(request)
     messages.success(request, 'You have been logged out successfully.')
     return redirect('admin_login')
