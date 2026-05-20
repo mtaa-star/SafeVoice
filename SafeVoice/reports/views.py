@@ -42,40 +42,6 @@ def send_admin_email(report):
         return False
 
 
-def send_admin_sms(report):
-    account_sid = getattr(settings, 'TWILIO_ACCOUNT_SID', '')
-    auth_token = getattr(settings, 'TWILIO_AUTH_TOKEN', '')
-    from_number = getattr(settings, 'TWILIO_FROM_NUMBER', '')
-    to_number = getattr(settings, 'ADMIN_NOTIFICATION_PHONE', '')
-    if not all([account_sid, auth_token, from_number, to_number]):
-        return False
-
-    body = (
-        f"New GBV report from {report.name}: {report.get_violence_type_display()} in "
-        f"{report.get_location_display()}. Contact {report.contact}. Submitted at "
-        f"{report.submitted_at.strftime('%Y-%m-%d %H:%M')}."
-    )
-
-    try:
-        data = urllib.parse.urlencode({
-            'From': from_number,
-            'To': to_number,
-            'Body': body,
-        }).encode()
-        auth_str = f"{account_sid}:{auth_token}"
-        auth_header = base64.b64encode(auth_str.encode()).decode()
-        url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
-        req = urllib.request.Request(url, data=data, method='POST')
-        req.add_header('Authorization', f'Basic {auth_header}')
-        req.add_header('Content-Type', 'application/x-www-form-urlencoded')
-
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return resp.status in (200, 201)
-    except Exception as e:
-        print(f"Admin SMS notification failed: {e}")
-        return False
-
-
 def notify_admin(report):
     email_sent = send_admin_email(report)
     if not email_sent:
